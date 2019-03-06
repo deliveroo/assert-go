@@ -100,7 +100,7 @@ func JSONPath(t testingT, subject interface{}, path string, want interface{}, op
 		t.Error(err)
 		return false
 	}
-	return assertEqual(t, path, got, want, opts)
+	return assertEqual(t, func() string { return path }, got, want, opts)
 }
 
 // Contains asserts that got contains want.
@@ -108,7 +108,7 @@ func Contains(t testingT, got, want string) bool {
 	t.Helper()
 	if !strings.Contains(got, want) {
 		msg := fmt.Sprintf("got %q, which doesn't contain %q", got, want)
-		if expr := getArg(1); expr != "" {
+		if expr := getArg(1)(); expr != "" {
 			msg = expr + ": " + msg
 		}
 		t.Error(msg)
@@ -139,7 +139,7 @@ func Match(t testingT, got, want string) bool {
 	}
 	if !match {
 		msg := fmt.Sprintf("got %q, which doesn't match %q", got, want)
-		if expr := getArg(1); expr != "" {
+		if expr := getArg(1)(); expr != "" {
 			msg = expr + ": " + msg
 		}
 		t.Error(msg)
@@ -170,7 +170,7 @@ func NotNil(t testingT, got interface{}) bool {
 	t.Helper()
 	if isNil(got) {
 		msg := "got <nil>, want not nil"
-		if expr := getArg(1); expr != "" {
+		if expr := getArg(1)(); expr != "" {
 			msg = expr + ": " + msg
 		}
 		t.Error(msg)
@@ -185,7 +185,7 @@ func isNil(v interface{}) bool {
 	return v == nil || reflect.ValueOf(v).IsNil()
 }
 
-func assertEqual(t testingT, expr string, got, want interface{}, opts []cmp.Option) bool {
+func assertEqual(t testingT, expr func() string, got, want interface{}, opts []cmp.Option) bool {
 	defer func() {
 		if err := recover(); err != nil {
 			t.Error("diff error:", err)
@@ -194,6 +194,7 @@ func assertEqual(t testingT, expr string, got, want interface{}, opts []cmp.Opti
 	t.Helper()
 	opts = append(opts, defaultOpts...)
 	if diff := cmp.Diff(got, want, opts...); diff != "" {
+		expr := expr()
 		msg := "(-got +want): " + diff
 		if expr != "" {
 			msg = expr + " " + msg
@@ -206,7 +207,7 @@ func assertEqual(t testingT, expr string, got, want interface{}, opts []cmp.Opti
 
 // getArg finds the source code for the given function argument. For example, if
 // function f was called like `f(id)`, getArg(0) would return "id".
-func getArg(arg int) string {
+func getArg(arg int) func() string {
 	// Find the name of the assertion function (e.g. Equal).
 	pc, _, _, _ := runtime.Caller(1)
 	fn := runtime.FuncForPC(pc).Name()
@@ -217,38 +218,40 @@ func getArg(arg int) string {
 	// Open the source code of the calling function, find the function call, and
 	// return the source for the argument.
 	_, filename, line, _ := runtime.Caller(2)
-	file, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	b, err := ioutil.ReadAll(file)
-	if err != nil {
-		panic(err)
-	}
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "", string(b), parser.ParseComments)
-	if err != nil {
-		panic(err)
-	}
-	expr := ""
-	ast.Inspect(f, func(n ast.Node) bool {
-		if n == nil {
-			return false
+	return func() string {
+		file, err := os.Open(filename)
+		if err != nil {
+			panic(err)
 		}
-		if fset.Position(n.Pos()).Line == line {
-			switch x := n.(type) {
-			case *ast.CallExpr:
-				if !isFunc(x, fn) {
-					return true
-				}
-				arg := x.Args[arg]
-				start, end := fset.Position(arg.Pos()), fset.Position(arg.End())
-				expr = string(b)[start.Offset:end.Offset]
+		b, err := ioutil.ReadAll(file)
+		if err != nil {
+			panic(err)
+		}
+		fset := token.NewFileSet()
+		f, err := parser.ParseFile(fset, "", string(b), parser.ParseComments)
+		if err != nil {
+			panic(err)
+		}
+		expr := ""
+		ast.Inspect(f, func(n ast.Node) bool {
+			if n == nil {
+				return false
 			}
-		}
-		return true
-	})
-	return expr
+			if fset.Position(n.Pos()).Line == line {
+				switch x := n.(type) {
+				case *ast.CallExpr:
+					if !isFunc(x, fn) {
+						return true
+					}
+					arg := x.Args[arg]
+					start, end := fset.Position(arg.Pos()), fset.Position(arg.End())
+					expr = string(b)[start.Offset:end.Offset]
+				}
+			}
+			return true
+		})
+		return expr
+	}
 }
 
 func isFunc(expr *ast.CallExpr, name string) bool {
