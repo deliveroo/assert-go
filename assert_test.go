@@ -177,29 +177,44 @@ func TestAssertMust(t *testing.T) {
 }
 
 func TestAssertNil(t *testing.T) {
-	type Thing struct{}
 	assert(t, func(mt *mockTestingT) bool {
 		return Nil(mt, nil)
 	}, ``)
 
-	assert(t,
-		func(mt *mockTestingT) bool {
-			thing := &Thing{}
-			return Nil(mt, thing)
-		},
-		`thing (-got +want): :
+	t.Run("with a struct", func(t *testing.T) {
+		type Thing struct{}
+
+		assert(t,
+			func(mt *mockTestingT) bool {
+				thing := &Thing{}
+				return Nil(mt, thing)
+			},
+			`thing (-got +want): :
 			-: &assert.Thing{}
 			+: <non-existent>
 		`,
-	)
+		)
 
-	assert(t,
-		func(mt *mockTestingT) bool {
-			var thing *Thing
-			return Nil(mt, thing)
-		},
-		``,
-	)
+		assert(t,
+			func(mt *mockTestingT) bool {
+				var thing *Thing
+				return Nil(mt, thing)
+			},
+			``,
+		)
+	})
+	t.Run("with a string value", func(t *testing.T) {
+		assert(t,
+			func(mt *mockTestingT) bool {
+				str := "foo"
+				return Nil(mt, str)
+			},
+			`str (-got +want): :
+			-: "foo"
+			+: <non-existent>
+		`,
+		)
+	})
 }
 
 func TestAssertNotNil(t *testing.T) {
