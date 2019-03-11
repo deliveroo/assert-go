@@ -182,7 +182,18 @@ func NotNil(t testingT, got interface{}) bool {
 // isNil returns true if v is nil, or if v is an interface value containing a
 // nil element.
 func isNil(v interface{}) bool {
-	return v == nil || reflect.ValueOf(v).IsNil()
+	if v == nil {
+		return true
+	}
+	value := reflect.ValueOf(v)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func,
+		reflect.Interface, reflect.Map,
+		reflect.Ptr, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
+	}
 }
 
 func assertEqual(t testingT, expr func() string, got, want interface{}, opts []cmp.Option) bool {
