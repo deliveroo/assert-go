@@ -1,7 +1,7 @@
 # Assert
 
 [![CircleCI](https://circleci.com/gh/deliveroo/assert-go.svg?style=svg&circle-token=b3594d1037dc390b8d3e39383fdd70a02fced4fe)](https://circleci.com/gh/deliveroo/assert-go)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4.svg)](http://godoc.deliveroo.net/github.com/deliveroo/assert-go) 
+[![GoDoc](https://godoc.org/github.com/deliveroo/assert-go?status.svg)](https://godoc.org/github.com/deliveroo/assert-go)
 
 Package assert simplifies writing test assertions.
 
