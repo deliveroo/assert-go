@@ -79,7 +79,9 @@ func Equal(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	return assertEqual(t, getArg(1), got, want, opts)
 }
 
-// JSONEqual asserts that got and want are assertEqual when marshaled as JSON.
+// JSONEqual asserts that got and want are equal when represented as JSON. If
+// either are already strings, they will be considered raw JSON. Otherwise, they
+// will be marshaled to JSON before comparison.
 func JSONEqual(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	t.Helper()
 	return assertEqual(t, getArg(1), toJSON(got), toJSON(want), opts)
@@ -277,6 +279,15 @@ func isFunc(expr *ast.CallExpr, name string) bool {
 
 // toJSON transforms v into simple JSON types (maps and arrays).
 func toJSON(v interface{}) interface{} {
+	// Special case: if v is a string, assume it's a raw JSON string and
+	// unmarshal it directly.
+	if s, ok := v.(string); ok {
+		var r interface{}
+		if err := json.Unmarshal([]byte(s), &r); err != nil {
+			panic(err)
+		}
+		return r
+	}
 	b, err := json.Marshal(v)
 	if err != nil {
 		panic(err)

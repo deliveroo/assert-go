@@ -55,6 +55,16 @@ func TestAssertJSONEqual(t *testing.T) {
 		return JSONEqual(mt, subject, map[string]interface{}{"id": 1})
 	}, ``)
 
+	assert(t, func(mt *mockTestingT) bool {
+		return JSONEqual(mt, `{"id": 1}`, map[string]interface{}{"id": 1})
+	}, ``)
+
+	assert(t, func(mt *mockTestingT) bool {
+		return JSONEqual(mt, `{"id": 1}`, `{
+			"id": 1
+		}`)
+	}, ``)
+
 	assert(t,
 		func(mt *mockTestingT) bool {
 			return JSONEqual(mt, subject, map[string]interface{}{"id": 2})
