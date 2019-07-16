@@ -241,6 +241,29 @@ func TestAssertNotNil(t *testing.T) {
 	)
 }
 
+func TestErrorContains(t *testing.T) {
+	assert(t, func(mt *mockTestingT) bool {
+		err := fmt.Errorf("foo bar")
+		return ErrorContains(mt, err, "foo")
+	}, ``)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			err := fmt.Errorf("foo")
+			return ErrorContains(mt, err, "bar")
+		},
+		`err: got "foo", which does not contain "bar"`,
+	)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			var err error
+			return ErrorContains(mt, err, "foo")
+		},
+		`err: got <nil>, want not nil`,
+	)
+}
+
 func removeLeadingTabs(s string) string {
 	lines := strings.Split(s, "\n")
 	for i, l := range lines {

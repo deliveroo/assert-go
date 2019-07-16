@@ -79,6 +79,28 @@ func Equal(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	return assertEqual(t, getArg(1), got, want, opts)
 }
 
+// ErrorContains asserts that the error message contains the wanted string.
+func ErrorContains(t testingT, got error, want string) bool {
+	t.Helper()
+	if got == nil {
+		msg := "got <nil>, want not nil"
+		if expr := getArg(1)(); expr != "" {
+			msg = expr + ": " + msg
+		}
+		t.Error(msg)
+		return false
+	}
+	if !strings.Contains(got.Error(), want) {
+		msg := fmt.Sprintf("got %q, which does not contain %q", got.Error(), want)
+		if expr := getArg(1)(); expr != "" {
+			msg = expr + ": " + msg
+		}
+		t.Error(msg)
+		return false
+	}
+	return true
+}
+
 // JSONEqual asserts that got and want are equal when represented as JSON. If
 // either are already strings, they will be considered raw JSON. Otherwise, they
 // will be marshaled to JSON before comparison.
