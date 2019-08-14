@@ -301,14 +301,16 @@ func isFunc(expr *ast.CallExpr, name string) bool {
 
 // toJSON transforms v into simple JSON types (maps and arrays).
 func toJSON(v interface{}) interface{} {
-	// Special case: if v is a string, assume it's a raw JSON string and
-	// unmarshal it directly.
+	// Special case: if v is a string and begins with `[` or `{`, assume it's a
+	// raw JSON string and unmarshal it directly.
 	if s, ok := v.(string); ok {
-		var r interface{}
-		if err := json.Unmarshal([]byte(s), &r); err != nil {
-			panic(err)
+		if strings.HasPrefix(s, "{") || strings.HasPrefix(s, "[") {
+			var r interface{}
+			if err := json.Unmarshal([]byte(s), &r); err != nil {
+				panic(err)
+			}
+			return r
 		}
-		return r
 	}
 	b, err := json.Marshal(v)
 	if err != nil {
