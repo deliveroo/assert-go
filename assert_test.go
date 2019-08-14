@@ -77,20 +77,20 @@ func TestAssertJSONEqual(t *testing.T) {
 
 func TestAssertJSONPath(t *testing.T) {
 	subject := struct {
-		ID int `json:"id"`
-	}{1}
+		ID string `json:"id"`
+	}{"false"}
 
 	assert(t, func(mt *mockTestingT) bool {
-		return JSONPath(mt, subject, "id", 1)
+		return JSONPath(mt, subject, "id", "false")
 	}, ``)
 
 	assert(t,
 		func(mt *mockTestingT) bool {
-			return JSONPath(mt, subject, "id", 2)
+			return JSONPath(mt, subject, "id", "true")
 		},
-		`$.id (-got +want): {float64}:
-			-: 1
-			+: 2
+		`$.id (-got +want): {string}:
+			-: "false"
+			+: "true"
 		`)
 
 	assert(t,
