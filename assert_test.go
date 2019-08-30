@@ -157,22 +157,16 @@ func TestMapHasKey(t *testing.T) {
 		testMap := map[interface{}]interface{}{
 			"testKey": true,
 		}
-		res := MapHasKey(mt, testMap, "testKey")
-		fmt.Println(res)
-		return True(mt, res)
+		return MapHasKey(mt, testMap, "testKey")
 	}, ``,
 	)
 
 	assert(t, func(mt *mockTestingT) bool {
 		testMap := map[interface{}]interface{}{}
-		res := MapHasKey(mt, testMap, "testKey")
-		fmt.Println(res)
-		return True(mt, res)
+		testKey := "testKey"
+		return MapHasKey(mt, testMap, testKey)
 	},
-		`res (-got +want): {bool}:
-			-: false
-			+: true
-		`,
+	fmt.Sprintf("Given map missing expected key: testKey"),
 	)
 }
 
