@@ -320,3 +320,9 @@ func toJSON(v interface{}) interface{} {
 	}
 	return r
 }
+
+func MapHasKey(t testingT, m map[interface{}]interface{}, v string) bool {
+	t.Helper()
+	_, ok := m[v]
+	return ok
+}
