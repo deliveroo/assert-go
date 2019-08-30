@@ -152,6 +152,30 @@ func TestAssertFalse(t *testing.T) {
 	)
 }
 
+func TestMapHasKey(t *testing.T) {
+	assert(t, func(mt *mockTestingT) bool {
+		testMap := map[interface{}]interface{}{
+			"testKey": true,
+		}
+		res := MapHasKey(mt, testMap, "testKey")
+		fmt.Println(res)
+		return True(mt, res)
+	}, ``,
+	)
+
+	assert(t, func(mt *mockTestingT) bool {
+		testMap := map[interface{}]interface{}{}
+		res := MapHasKey(mt, testMap, "testKey")
+		fmt.Println(res)
+		return True(mt, res)
+	},
+		`res (-got +want): {bool}:
+			-: false
+			+: true
+		`,
+	)
+}
+
 func TestAssertMatch(t *testing.T) {
 	assert(t, func(mt *mockTestingT) bool {
 		log := "hello, world!"
