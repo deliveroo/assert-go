@@ -153,6 +153,20 @@ func False(t testingT, got bool) bool {
 	return assertEqual(t, getArg(1), got, false, nil)
 }
 
+// MapHasKey asserts that got contains the given key.
+func MapHasKey(t testingT, got map[interface{}]interface{}, wantKey string) bool {
+	t.Helper()
+	_, ok := got[wantKey]
+	if !ok {
+		msg := fmt.Sprintf("missing expected key: %q", wantKey)
+		if expr := getArg(1)(); expr != "" {
+			msg = expr + ": " + msg
+		}
+		t.Error(msg)
+	}
+	return ok
+}
+
 // Match asserts that got matches the regex want.
 func Match(t testingT, got, want string) bool {
 	t.Helper()
@@ -319,13 +333,4 @@ func toJSON(v interface{}) interface{} {
 		panic(err)
 	}
 	return r
-}
-
-func MapHasKey(t testingT, m map[interface{}]interface{}, v string) bool {
-	t.Helper()
-	_, ok := m[v]
-	if !ok {
-		t.Error(fmt.Sprintf("Given map missing expected key: %s", v))
-	}
-	return ok
 }
