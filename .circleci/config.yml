@@ -3,7 +3,6 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.11
-    working_directory: /go/src/github.com/deliveroo/assert-go
 
     environment:
       TEST_RESULTS: /tmp/test-results
