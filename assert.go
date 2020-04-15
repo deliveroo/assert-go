@@ -79,6 +79,12 @@ func Equal(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	return assertEqual(t, getArg(1), got, want, opts)
 }
 
+// NotEqual asserts that got and want are not equal.
+func NotEqual(t testingT, got, want interface{}, opts ...cmp.Option) bool {
+	t.Helper()
+	return assertNotEqual(t, getArg(1), got, want, opts)
+}
+
 // ErrorContains asserts that the error message contains the wanted string.
 func ErrorContains(t testingT, got error, want string) bool {
 	t.Helper()
@@ -125,6 +131,17 @@ func JSONPath(t testingT, subject interface{}, path string, want interface{}, op
 		return false
 	}
 	return assertEqual(t, func() string { return path }, got, want, opts)
+}
+
+// JSONLookup fetches a value from a JSON object using the path expression.
+func JSONLookup(t testingT, subject interface{}, path string) interface{} {
+	t.Helper()
+	if !strings.HasPrefix(path, "$.") {
+		path = "$." + path
+	}
+	got, err := jsonpath.JsonPathLookup(subject, path)
+	Must(t, err)
+	return got
 }
 
 // Contains asserts that got contains want.
@@ -233,6 +250,26 @@ func assertEqual(t testingT, expr func() string, got, want interface{}, opts []c
 		msg := "(-got +want): " + diff
 		if expr != "" {
 			msg = expr + " " + msg
+		}
+		t.Error(msg)
+		return false
+	}
+	return true
+}
+
+func assertNotEqual(t testingT, expr func() string, got, notWant interface{}, opts []cmp.Option) bool {
+	defer func() {
+		if err := recover(); err != nil {
+			t.Error("diff error:", err)
+		}
+	}()
+	t.Helper()
+	opts = append(opts, defaultOpts...)
+	if diff := cmp.Diff(got, notWant, opts...); diff == "" {
+		expr := expr()
+		msg := fmt.Sprintf("should not equal %#v", notWant)
+		if expr != "" {
+			msg = expr + ": " + msg
 		}
 		t.Error(msg)
 		return false

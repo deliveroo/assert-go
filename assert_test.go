@@ -9,6 +9,7 @@ import (
 )
 
 func testGetArg(interface{}) string { return getArg(0)() }
+
 func TestGetArgName(t *testing.T) {
 	t.Run("variable", func(t *testing.T) {
 		id := 1
@@ -44,6 +45,35 @@ func TestAssertEqual(t *testing.T) {
 			-: 1
 			+: 2
 		`)
+}
+
+func TestAssertNotEqual(t *testing.T) {
+	assert(t, func(mt *mockTestingT) bool {
+		return NotEqual(mt, 1, 2)
+	}, ``)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			id := 1
+			return NotEqual(mt, id, 1)
+		},
+		`id: should not equal 1`)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			subject := "noun"
+			return NotEqual(mt, subject, subject)
+		},
+		`subject: should not equal "noun"`)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			subject := struct {
+				ID int `json:"id"`
+			}{1}
+			return NotEqual(mt, subject, subject)
+		},
+		`subject: should not equal struct { ID int "json:\"id\"" }{ID:1}`)
 }
 
 func TestAssertJSONEqual(t *testing.T) {
