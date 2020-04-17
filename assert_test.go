@@ -241,6 +241,50 @@ func TestAssertNotNil(t *testing.T) {
 	)
 }
 
+func TestAssertEmpty(t *testing.T) {
+	assert(t, func(mt *mockTestingT) bool {
+		return Empty(mt, "")
+	}, ``)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			val := "abc"
+			return Empty(mt, val)
+		},
+		`val: got "abc", want empty`,
+	)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			val := []int{1, 2, 3}
+			return Empty(mt, val)
+		},
+		`val: got [1 2 3], want empty`,
+	)
+}
+
+func TestAssertNotEmpty(t *testing.T) {
+	assert(t, func(mt *mockTestingT) bool {
+		return NotEmpty(mt, "text")
+	}, ``)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			var val string
+			return NotEmpty(mt, val)
+		},
+		`val: got "", want not empty`,
+	)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			var val []int
+			return NotEmpty(mt, val)
+		},
+		`val: got [], want not empty`,
+	)
+}
+
 func TestErrorContains(t *testing.T) {
 	assert(t, func(mt *mockTestingT) bool {
 		err := fmt.Errorf("foo bar")

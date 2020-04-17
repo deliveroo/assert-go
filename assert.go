@@ -29,6 +29,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
@@ -203,6 +204,54 @@ func NotNil(t testingT, got interface{}) bool {
 	return true
 }
 
+// Empty asserts that got is empty.
+func Empty(t testingT, got interface{}) bool {
+	t.Helper()
+	if !isEmpty(got) {
+		msg := fmt.Sprintf("got %s, want empty", fmtVal(got))
+		if expr := getArg(1)(); expr != "" {
+			msg = expr + ": " + msg
+		}
+		t.Error(msg)
+		return false
+	}
+	return true
+}
+
+// NotEmpty asserts that got is not empty.
+func NotEmpty(t testingT, got interface{}) bool {
+	t.Helper()
+	if isEmpty(got) {
+		msg := fmt.Sprintf("got %s, want not empty", fmtVal(got))
+		if expr := getArg(1)(); expr != "" {
+			msg = expr + ": " + msg
+		}
+		t.Error(msg)
+		return false
+	}
+	return true
+}
+
+// isEmpty returns true if v is nil, empty string, or a zero value.
+func isEmpty(v interface{}) bool {
+	if v == nil {
+		return true
+	}
+	value := reflect.ValueOf(v)
+	switch value.Kind() {
+	case reflect.Array, reflect.Chan, reflect.Map, reflect.Slice, reflect.String:
+		return value.Len() == 0
+	case reflect.Ptr:
+		if value.IsNil() {
+			return true
+		}
+		return isEmpty(value.Elem().Interface())
+	default:
+		zeroValue := reflect.Zero(value.Type()).Interface()
+		return reflect.DeepEqual(v, zeroValue)
+	}
+}
+
 // isNil returns true if v is nil, or if v is an interface value containing a
 // nil element.
 func isNil(v interface{}) bool {
@@ -286,6 +335,15 @@ func getArg(arg int) func() string {
 			return true
 		})
 		return expr
+	}
+}
+
+func fmtVal(v interface{}) string {
+	switch v := v.(type) {
+	case string:
+		return strconv.Quote(v)
+	default:
+		return fmt.Sprint(v)
 	}
 }
 
