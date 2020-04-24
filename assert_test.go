@@ -182,6 +182,24 @@ func TestAssertFalse(t *testing.T) {
 	)
 }
 
+func TestMapHasKey(t *testing.T) {
+	assert(t, func(mt *mockTestingT) bool {
+		testMap := map[interface{}]interface{}{
+			"testKey": true,
+		}
+		return MapHasKey(mt, testMap, "testKey")
+	}, ``,
+	)
+
+	assert(t, func(mt *mockTestingT) bool {
+		testMap := map[interface{}]interface{}{}
+		testKey := "testKey"
+		return MapHasKey(mt, testMap, testKey)
+	},
+	fmt.Sprintf("Given map missing expected key: testKey"),
+	)
+}
+
 func TestAssertMatch(t *testing.T) {
 	assert(t, func(mt *mockTestingT) bool {
 		log := "hello, world!"
