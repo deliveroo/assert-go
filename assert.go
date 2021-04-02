@@ -140,7 +140,7 @@ func JSONLookup(t testingT, subject interface{}, path string) interface{} {
 }
 
 // Contains asserts that got contains want.
-// Works with strings and slices.
+// The got parameter can be either a string or slice.
 func Contains(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	t.Helper()
 
@@ -167,29 +167,8 @@ func Contains(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	}
 }
 
-func castInterfaceToSlice(inter interface{}) []interface{} {
-	v := reflect.ValueOf(inter)
-	ii := make([]interface{}, v.Len())
-	for i := 0; i < v.Len(); i++ {
-		ii[i] = v.Index(i).Interface()
-	}
-	return ii
-}
-
-func sliceContains(t testingT, got []interface{}, want interface{}, expr string, opts ...cmp.Option) bool {
-	for i := 0; i < len(got); i++ {
-		opts = append(opts, defaultOpts...)
-		if eq := cmp.Equal(got[i], want, opts...); eq {
-			return true
-		}
-	}
-
-	diff := cmp.Diff(want, nil, opts...)
-	t.Error(formatDiff(expr, "does not contain: ", diff))
-	return false
-}
-
 // ContainsContainsAllOf asserts that got contains all items of want.
+// The got and want parameters must be slices.
 func ContainsAllOf(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	t.Helper()
 
@@ -223,21 +202,6 @@ func ContainsAllOf(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	}
 
 	return true
-}
-
-func sliceContainsAllOf(t testingT, got, want, missing []interface{}, opts ...cmp.Option) []interface{} {
-	if len(want) == 0 {
-		return missing
-	}
-
-	for i := 0; i < len(got); i++ {
-		if eq := cmp.Equal(got[i], want[0], opts...); eq {
-			return sliceContainsAllOf(t, append(got[:i], got[i+1:]...), want[1:], missing, opts...)
-		}
-	}
-
-	missing = append(missing, want[0])
-	return sliceContainsAllOf(t, got, want[1:], missing, opts...)
 }
 
 // True asserts that got is true.
@@ -383,6 +347,43 @@ func assertNotEqual(t testingT, expr func() string, got, notWant interface{}, op
 		return false
 	}
 	return true
+}
+
+func castInterfaceToSlice(inter interface{}) []interface{} {
+	v := reflect.ValueOf(inter)
+	ii := make([]interface{}, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		ii[i] = v.Index(i).Interface()
+	}
+	return ii
+}
+
+func sliceContains(t testingT, got []interface{}, want interface{}, expr string, opts ...cmp.Option) bool {
+	for i := 0; i < len(got); i++ {
+		opts = append(opts, defaultOpts...)
+		if eq := cmp.Equal(got[i], want, opts...); eq {
+			return true
+		}
+	}
+
+	diff := cmp.Diff(want, nil, opts...)
+	t.Error(formatDiff(expr, "does not contain: ", diff))
+	return false
+}
+
+func sliceContainsAllOf(t testingT, got, want, missing []interface{}, opts ...cmp.Option) []interface{} {
+	if len(want) == 0 {
+		return missing
+	}
+
+	for i := 0; i < len(got); i++ {
+		if eq := cmp.Equal(got[i], want[0], opts...); eq {
+			return sliceContainsAllOf(t, append(got[:i], got[i+1:]...), want[1:], missing, opts...)
+		}
+	}
+
+	missing = append(missing, want[0])
+	return sliceContainsAllOf(t, got, want[1:], missing, opts...)
 }
 
 // getArg finds the source code for the given function argument. For example, if
