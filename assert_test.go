@@ -42,10 +42,7 @@ func TestAssertEqual(t *testing.T) {
 			id := 1
 			return Equal(mt, id, 2)
 		},
-		`id (-got +want): int(
--	1,
-+	2,
-)`)
+		"id (-got +want):")
 }
 
 func TestAssertNotEqual(t *testing.T) {
@@ -100,10 +97,7 @@ func TestAssertJSONEqual(t *testing.T) {
 		func(mt *mockTestingT) bool {
 			return JSONEqual(mt, subject, map[string]interface{}{"id": 2})
 		},
-		`subject (-got +want): map[string]interface{}{
--	"id": float64(1),
-+	"id": float64(2),
-}`)
+		`subject (-got +want):`)
 }
 
 func TestAssertJSONPath(t *testing.T) {
@@ -119,10 +113,7 @@ func TestAssertJSONPath(t *testing.T) {
 		func(mt *mockTestingT) bool {
 			return JSONPath(mt, subject, "id", "true")
 		},
-		`$.id (-got +want): string(
-- 	"false",
-+ 	"true",
-  )`)
+		`$.id (-got +want):`)
 
 	assert(t,
 		func(mt *mockTestingT) bool {
@@ -133,132 +124,181 @@ func TestAssertJSONPath(t *testing.T) {
 }
 
 func TestAssertContains(t *testing.T) {
-	assert(t, func(mt *mockTestingT) bool {
-		out := "red orange yellow"
-		return Contains(mt, out, "yellow")
-	}, ``)
+	t.Run("when input is string", func(t *testing.T) {
+		t.Run("when contains input", func(t *testing.T) {
+			assert(t, func(mt *mockTestingT) bool {
+				out := "red orange yellow"
+				return Contains(mt, out, "yellow")
+			}, ``)
+		})
 
-	assert(t,
-		func(mt *mockTestingT) bool {
-			out := "red orange yellow"
-			return Contains(mt, out, "blue")
-		},
-		`out ("red orange yellow") does not contain: "blue"`,
-	)
+		t.Run("when does not contain input", func(t *testing.T) {
+			assert(t,
+				func(mt *mockTestingT) bool {
+					out := "red orange yellow"
+					return Contains(mt, out, "blue")
+				},
+				`out ("red orange yellow") does not contain: "blue"`,
+			)
+		})
+	})
 
-	assert(t, func(mt *mockTestingT) bool {
-		out := []string{"red", "orange", "yellow"}
-		return Contains(mt, out, "yellow")
-	}, ``)
-
-	assert(t,
-		func(mt *mockTestingT) bool {
-			out := []string{"red", "orange", "yellow"}
-			return Contains(mt, out, "blue")
-		},
-		`out does not contain: interface{}(
-- 	string("blue"),
-  )`,
-	)
-
-	assert(t, func(mt *mockTestingT) bool {
+	t.Run("when input is struct", func(t *testing.T) {
 		type x struct {
 			A int
 			B bool
 		}
-		out := []x{
-			{
-				A: 1,
-				B: true,
-			},
-			{
-				A: 2,
-				B: true,
-			},
-		}
-		return Contains(mt, out, x{A: 1, B: true})
-	}, ``)
 
-	assert(t,
-		func(mt *mockTestingT) bool {
-			type x struct {
-				A int
-				B bool
-			}
-			out := []x{
-				{
-					A: 1,
-					B: true,
-				},
-				{
-					A: 2,
-					B: true,
-				},
-			}
-			want := x{A: 1, B: false}
-			return Contains(mt, out, want)
-		},
-		`out does not contain: interface{}(
-- 	assert.x{A: 1},
-  )
-`,
-	)
+		t.Run("when contains input", func(t *testing.T) {
+			assert(t, func(mt *mockTestingT) bool {
+				out := []x{
+					{A: 1, B: true},
+					{A: 2, B: true},
+				}
+				return Contains(mt, out, x{A: 1, B: true})
+			}, ``)
+		})
 
-	assert(t,
-		func(mt *mockTestingT) bool {
-			type x struct {
-				A int
-				B bool
-			}
-			out := []x{
-				{
-					A: 1,
-					B: true,
+		t.Run("when contains input if cmpopts are passed", func(t *testing.T) {
+			assert(t,
+				func(mt *mockTestingT) bool {
+					out := []x{
+						{A: 1, B: true},
+						{A: 2, B: true},
+					}
+					return Contains(
+						mt,
+						out,
+						x{A: 1, B: false},
+						cmpopts.IgnoreFields(x{}, "B"),
+					)
 				},
-				{
-					A: 2,
-					B: true,
-				},
-			}
-			return Contains(
-				mt,
-				out,
-				x{A: 1, B: false},
-				cmpopts.IgnoreFields(x{}, "B"),
+				"",
 			)
-		},
-		"",
-	)
+		})
 
-	assert(t,
-		func(mt *mockTestingT) bool {
-			out := map[string]string{}
-			return Contains(
-				mt,
-				out,
-				1,
+		t.Run("when does not contain input", func(t *testing.T) {
+			assert(t,
+				func(mt *mockTestingT) bool {
+					out := []x{
+						{A: 1, B: true},
+						{A: 2, B: true},
+					}
+					want := x{A: 1, B: false}
+					return Contains(mt, out, want)
+				},
+				`out does not contain:`,
 			)
-		},
-		`out has unsupported type for Contains: "map"`,
-	)
+		})
+	})
+
+	t.Run("when input type is not supported", func(t *testing.T) {
+		assert(t,
+			func(mt *mockTestingT) bool {
+				out := map[string]string{}
+				return Contains(mt, out, 1)
+			},
+			`out has unsupported type for Contains: "map"`,
+		)
+	})
 }
 
 func TestAssertContainsAllOf(t *testing.T) {
-	assert(t, func(mt *mockTestingT) bool {
-		out := []string{"red", "orange", "yellow"}
-		want := []string{"yellow"}
-		return SliceContainsAllOf(mt, out, want)
-	}, ``)
+	t.Run("when input is slice of strings", func(t *testing.T) {
+		t.Run("when contains all of input", func(t *testing.T) {
+			assert(t, func(mt *mockTestingT) bool {
+				out := []string{"red", "orange", "yellow"}
+				want := []string{"yellow"}
+				return ContainsAllOf(mt, out, want)
+			}, ``)
+		})
 
-	assert(t,
-		func(mt *mockTestingT) bool {
-			out := []string{"red", "orange", "yellow"}
-			want := []string{"blue", "red", "purple"}
-			return SliceContainsAllOf(mt, out, want)
-		},
-		`out does not contain: interface{}(
-- 	[]interface{}{string("blue"), string("purple")},
-  )`)
+		t.Run("when does not contain all of input", func(t *testing.T) {
+			assert(t,
+				func(mt *mockTestingT) bool {
+					out := []string{"red", "orange", "yellow"}
+					want := []string{"blue", "red", "purple"}
+					return ContainsAllOf(mt, out, want)
+				}, `out does not contain:`)
+		})
+
+		t.Run("when does not contain any of input", func(t *testing.T) {
+			assert(t,
+				func(mt *mockTestingT) bool {
+					out := []string{"red", "orange", "yellow"}
+					want := []string{"blue", "purple"}
+					return ContainsAllOf(mt, out, want)
+				}, `out does not contain:`)
+		})
+	})
+
+	t.Run("when input is slice of structs", func(t *testing.T) {
+		type x struct {
+			A int
+			B bool
+		}
+
+		t.Run("when contains all of input", func(t *testing.T) {
+			assert(t,
+				func(mt *mockTestingT) bool {
+					out := []x{
+						{A: 1, B: true},
+						{A: 2, B: true},
+					}
+					want := []x{
+						{A: 1, B: true},
+					}
+					return ContainsAllOf(mt, out, want)
+				},
+				``)
+		})
+
+		t.Run("when contains all of input if cmpopts are passed", func(t *testing.T) {
+			assert(t,
+				func(mt *mockTestingT) bool {
+					out := []x{
+						{A: 1, B: true},
+						{A: 2, B: true},
+					}
+					want := []x{
+						{A: 1, B: false},
+					}
+					return ContainsAllOf(mt, out, want, cmpopts.IgnoreFields(x{}, "B"))
+				},
+				``)
+		})
+
+		t.Run("when does not contain any of input", func(t *testing.T) {
+			assert(t,
+				func(mt *mockTestingT) bool {
+					out := []x{
+						{A: 1, B: true},
+						{A: 2, B: true},
+					}
+					want := []x{
+						{A: 1, B: true},
+						{A: 3, B: true},
+					}
+					return ContainsAllOf(mt, out, want)
+				},
+				`out does not contain:`)
+		})
+
+		t.Run("when does not contain any of input", func(t *testing.T) {
+			assert(t,
+				func(mt *mockTestingT) bool {
+					out := []x{
+						{A: 1, B: true},
+						{A: 2, B: true},
+					}
+					want := []x{
+						{A: 3, B: true},
+					}
+					return ContainsAllOf(mt, out, want)
+				},
+				`out does not contain:`)
+		})
+	})
 }
 
 func TestAssertTrue(t *testing.T) {
@@ -272,10 +312,7 @@ func TestAssertTrue(t *testing.T) {
 			enabled := false
 			return True(mt, enabled)
 		},
-		`enabled (-got +want): bool(
-- 	false,
-+ 	true,
-  )`,
+		`enabled (-got +want):`,
 	)
 }
 
@@ -290,10 +327,7 @@ func TestAssertFalse(t *testing.T) {
 			enabled := true
 			return False(mt, enabled)
 		},
-		`enabled (-got +want): bool(
-- 	true,
-+ 	false,
-  )`,
+		`enabled (-got +want):`,
 	)
 }
 
@@ -344,9 +378,7 @@ func TestAssertNil(t *testing.T) {
 				thing := &Thing{}
 				return Nil(mt, thing)
 			},
-			`thing (-got +want): interface{}(
-- 	&assert.Thing{},
-  )`,
+			`thing (-got +want):`,
 		)
 
 		assert(t,
@@ -363,9 +395,7 @@ func TestAssertNil(t *testing.T) {
 				str := "foo"
 				return Nil(mt, str)
 			},
-			`str (-got +want): interface{}(
-- 	string("foo"),
-  )`)
+			`str (-got +want):`)
 	})
 }
 
@@ -463,8 +493,8 @@ func assert(t *testing.T, fn func(mt *mockTestingT) bool, want string) {
 	want = removeLeadingTabs(want)
 	mt := &mockTestingT{}
 	ret := fn(mt)
-	if mt.err != want {
-		t.Errorf("error:\ngot:  %s\nwant: %s", mt.err, want)
+	if want != "" && !strings.HasPrefix(mt.err, want) {
+		t.Errorf("error:\ngot:  %s\nwant prefix: %s", mt.err, want)
 	}
 	if ret != (want == "") {
 		t.Errorf("returned %v, want %v", ret, (want == ""))

@@ -198,11 +198,12 @@ func sliceContains(t testingT, got []interface{}, want interface{}, expr string,
 	return false
 }
 
-func SliceContainsAllOf(t testingT, got, want interface{}, opts ...cmp.Option) bool {
+// ContainsContainsAllOf asserts that got contains all items of want.
+func ContainsAllOf(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	t.Helper()
 
 	if reflect.TypeOf(got).Kind() != reflect.Slice || reflect.TypeOf(want).Kind() != reflect.Slice {
-		t.Error("SliceContainsAllOf requires slice")
+		t.Error("ContainsAllOf requires slice")
 		return false
 	}
 
@@ -224,22 +225,18 @@ func SliceContainsAllOf(t testingT, got, want interface{}, opts ...cmp.Option) b
 }
 
 func sliceContainsAllOf(t testingT, got, want, missing []interface{}, opts ...cmp.Option) []interface{} {
+	if len(want) == 0 {
+		return missing
+	}
+
 	for i := 0; i < len(got); i++ {
 		if eq := cmp.Equal(got[i], want[0], opts...); eq {
-			if len(want) > 1 {
-				return sliceContainsAllOf(t, append(got[:i], got[i+1:]...), want[1:], missing, opts...)
-			} else {
-				return missing
-			}
+			return sliceContainsAllOf(t, append(got[:i], got[i+1:]...), want[1:], missing, opts...)
 		}
 	}
 
 	missing = append(missing, want[0])
-	if len(want) > 1 {
-		return sliceContainsAllOf(t, got, want[1:], missing, opts...)
-	} else {
-		return missing
-	}
+	return sliceContainsAllOf(t, got, want[1:], missing, opts...)
 }
 
 // True asserts that got is true.
