@@ -55,14 +55,14 @@ func TestAssertNotEqual(t *testing.T) {
 			id := 1
 			return NotEqual(mt, id, 1)
 		},
-		`id: should not equal 1`)
+		`id should not equal 1`)
 
 	assert(t,
 		func(mt *mockTestingT) bool {
 			subject := "noun"
 			return NotEqual(mt, subject, subject)
 		},
-		`subject: should not equal "noun"`)
+		`subject should not equal "noun"`)
 
 	assert(t,
 		func(mt *mockTestingT) bool {
@@ -71,7 +71,7 @@ func TestAssertNotEqual(t *testing.T) {
 			}{1}
 			return NotEqual(mt, subject, subject)
 		},
-		`subject: should not equal struct { ID int "json:\"id\"" }{ID:1}`)
+		`subject should not equal struct { ID int "json:\"id\"" }{ID:1}`)
 }
 
 func TestAssertJSONEqual(t *testing.T) {
@@ -195,10 +195,20 @@ func TestAssertContains(t *testing.T) {
 	t.Run("when input type is not supported", func(t *testing.T) {
 		assert(t,
 			func(mt *mockTestingT) bool {
-				out := map[string]string{}
+				out := 1
 				return Contains(mt, out, 1)
 			},
-			`out has unsupported type for Contains: "map"`,
+			`out has unsupported type for Contains: "int"`,
+		)
+	})
+
+	t.Run("when got is string but want is not", func(t *testing.T) {
+		assert(t,
+			func(mt *mockTestingT) bool {
+				out := "red orange yellow"
+				return Contains(mt, out, 1)
+			},
+			`got and want must be the same type`,
 		)
 	})
 }
@@ -220,6 +230,14 @@ func TestAssertContainsAllOf(t *testing.T) {
 					want := []string{"blue", "red", "purple"}
 					return ContainsAllOf(mt, out, want)
 				}, `out does not contain:`)
+		})
+
+		t.Run("when want contains more than got", func(t *testing.T) {
+			assert(t, func(mt *mockTestingT) bool {
+				out := []string{"red", "orange", "yellow"}
+				want := []string{"red", "orange", "yellow", "blue"}
+				return ContainsAllOf(mt, out, want)
+			}, `out does not contain:`)
 		})
 
 		t.Run("when does not contain any of input", func(t *testing.T) {
@@ -299,6 +317,25 @@ func TestAssertContainsAllOf(t *testing.T) {
 				`out does not contain:`)
 		})
 	})
+
+	t.Run("when want is not a slice", func(t *testing.T) {
+		assert(t,
+			func(mt *mockTestingT) bool {
+				out := []int{1, 2, 3}
+				want := 3
+				return ContainsAllOf(mt, out, want)
+			},
+			`want must be slice`)
+	})
+
+	t.Run("when input is of unsupported type", func(t *testing.T) {
+		assert(t,
+			func(mt *mockTestingT) bool {
+				out := -1
+				return ContainsAllOf(mt, out, 3)
+			},
+			`out has unsupported type for ContainsAllOf: "int"`)
+	})
 }
 
 func TestAssertTrue(t *testing.T) {
@@ -342,7 +379,7 @@ func TestAssertMatch(t *testing.T) {
 			log := "hello, world!"
 			return Match(mt, log, "^goodbye.*$")
 		},
-		`log: got "hello, world!", which doesn't match "^goodbye.*$"`,
+		`log ("hello, world!") doesn't match "^goodbye.*$"`,
 	)
 
 	assert(t, func(mt *mockTestingT) bool {
@@ -409,7 +446,7 @@ func TestAssertNotNil(t *testing.T) {
 			var thing *struct{}
 			return NotNil(mt, thing)
 		},
-		`thing: got <nil>, want not nil`,
+		`thing was not nil`,
 	)
 }
 
@@ -423,7 +460,7 @@ func TestAssertEmpty(t *testing.T) {
 			val := "abc"
 			return Empty(mt, val)
 		},
-		`val: got "abc", want empty`,
+		`val ("abc") was not empty`,
 	)
 
 	assert(t,
@@ -431,7 +468,7 @@ func TestAssertEmpty(t *testing.T) {
 			val := []int{1, 2, 3}
 			return Empty(mt, val)
 		},
-		`val: got [1 2 3], want empty`,
+		`val ([1 2 3]) was not empty`,
 	)
 }
 
@@ -445,7 +482,7 @@ func TestAssertNotEmpty(t *testing.T) {
 			var val string
 			return NotEmpty(mt, val)
 		},
-		`val: got "", want not empty`,
+		`val was empty`,
 	)
 
 	assert(t,
@@ -453,7 +490,7 @@ func TestAssertNotEmpty(t *testing.T) {
 			var val []int
 			return NotEmpty(mt, val)
 		},
-		`val: got [], want not empty`,
+		`val was empty`,
 	)
 }
 
@@ -468,7 +505,7 @@ func TestErrorContains(t *testing.T) {
 			err := fmt.Errorf("foo")
 			return ErrorContains(mt, err, "bar")
 		},
-		`err: got "foo", which does not contain "bar"`,
+		`err ("foo") does not contain "bar"`,
 	)
 
 	assert(t,
@@ -476,7 +513,7 @@ func TestErrorContains(t *testing.T) {
 			var err error
 			return ErrorContains(mt, err, "foo")
 		},
-		`err: got <nil>, want not nil`,
+		`err was not nil`,
 	)
 }
 
