@@ -146,17 +146,100 @@ func JSONLookup(t testingT, subject interface{}, path string) interface{} {
 }
 
 // Contains asserts that got contains want.
-func Contains(t testingT, got, want string) bool {
+// Works with strings and slices.
+func Contains(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	t.Helper()
-	if !strings.Contains(got, want) {
-		msg := fmt.Sprintf("got %q, which doesn't contain %q", got, want)
+
+	switch reflect.TypeOf(got).Kind() {
+	case reflect.String:
+		got2 := got.(string)
+		want2 := want.(string)
+		if !strings.Contains(got2, want2) {
+			msg := fmt.Sprintf("(%q) does not contain: %q", got2, want2)
+			if expr := getArg(1)(); expr != "" {
+				msg = expr + " " + msg
+			}
+			t.Error(msg)
+			return false
+		}
+		return true
+	case reflect.Slice:
+		return sliceContains(t, castInterfaceToSlice(got), want, getArg(1)(), opts...)
+	default:
+		msg := fmt.Sprintf("has unsupported type for Contains: %q", reflect.TypeOf(got).Kind())
 		if expr := getArg(1)(); expr != "" {
-			msg = expr + ": " + msg
+			msg = expr + " " + msg
 		}
 		t.Error(msg)
 		return false
 	}
+
+}
+
+func castInterfaceToSlice(inter interface{}) []interface{} {
+	v := reflect.ValueOf(inter)
+	ii := make([]interface{}, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		ii[i] = v.Index(i).Interface()
+	}
+	return ii
+}
+
+func sliceContains(t testingT, got []interface{}, want interface{}, expr string, opts ...cmp.Option) bool {
+	for i := 0; i < len(got); i++ {
+		opts = append(opts, defaultOpts...)
+		if eq := cmp.Equal(got[i], want, opts...); eq {
+			return true
+		}
+	}
+
+	diff := cmp.Diff(want, nil, opts...)
+	t.Error(formatDiff(expr, "does not contain: ", diff))
+	return false
+}
+
+func SliceContainsAllOf(t testingT, got, want interface{}, opts ...cmp.Option) bool {
+	t.Helper()
+
+	if reflect.TypeOf(got).Kind() != reflect.Slice || reflect.TypeOf(want).Kind() != reflect.Slice {
+		t.Error("SliceContainsAllOf requires slice")
+		return false
+	}
+
+	missing := sliceContainsAllOf(
+		t,
+		castInterfaceToSlice(got),
+		castInterfaceToSlice(want),
+		[]interface{}{},
+		opts...,
+	)
+
+	if len(missing) > 0 {
+		diff := cmp.Diff(missing, nil, opts...)
+		t.Error(formatDiff(getArg(1)(), "does not contain: ", diff))
+		return false
+	}
+
 	return true
+}
+
+func sliceContainsAllOf(t testingT, got, want, missing []interface{}, opts ...cmp.Option) []interface{} {
+	for i := 0; i < len(got); i++ {
+		if eq := cmp.Equal(got[i], want[0], opts...); eq {
+			if len(want) > 1 {
+				return sliceContainsAllOf(t, append(got[:i], got[i+1:]...), want[1:], missing, opts...)
+			} else {
+				return missing
+			}
+		}
+	}
+
+	missing = append(missing, want[0])
+	if len(want) > 1 {
+		return sliceContainsAllOf(t, got, want[1:], missing, opts...)
+	} else {
+		return missing
+	}
 }
 
 // True asserts that got is true.
@@ -295,12 +378,7 @@ func assertEqual(t testingT, expr func() string, got, want interface{}, opts []c
 	t.Helper()
 	opts = append(opts, defaultOpts...)
 	if diff := cmp.Diff(got, want, opts...); diff != "" {
-		expr := expr()
-		msg := "(-got +want): " + diff
-		if expr != "" {
-			msg = expr + " " + msg
-		}
-		t.Error(msg)
+		t.Error(formatDiff(expr(),"(-got +want): ", diff))
 		return false
 	}
 	return true
@@ -416,4 +494,12 @@ func toJSON(v interface{}) interface{} {
 		panic(err)
 	}
 	return r
+}
+
+func formatDiff(expr, prefix, diff string) string {
+	msg := prefix + strings.TrimSpace(diff)
+	if expr != "" {
+		msg = expr + " " + msg
+	}
+	return msg
 }

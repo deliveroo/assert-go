@@ -3,6 +3,7 @@ package assert
 import (
 	"errors"
 	"fmt"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"reflect"
 	"strings"
 	"testing"
@@ -41,10 +42,10 @@ func TestAssertEqual(t *testing.T) {
 			id := 1
 			return Equal(mt, id, 2)
 		},
-		`id (-got +want): {int}:
-			-: 1
-			+: 2
-		`)
+		`id (-got +want): int(
+-	1,
++	2,
+)`)
 }
 
 func TestAssertNotEqual(t *testing.T) {
@@ -99,10 +100,10 @@ func TestAssertJSONEqual(t *testing.T) {
 		func(mt *mockTestingT) bool {
 			return JSONEqual(mt, subject, map[string]interface{}{"id": 2})
 		},
-		`subject (-got +want): root["id"]:
-			-: 1
-			+: 2
-		`)
+		`subject (-got +want): map[string]interface{}{
+-	"id": float64(1),
++	"id": float64(2),
+}`)
 }
 
 func TestAssertJSONPath(t *testing.T) {
@@ -118,10 +119,10 @@ func TestAssertJSONPath(t *testing.T) {
 		func(mt *mockTestingT) bool {
 			return JSONPath(mt, subject, "id", "true")
 		},
-		`$.id (-got +want): {string}:
-			-: "false"
-			+: "true"
-		`)
+		`$.id (-got +want): string(
+- 	"false",
++ 	"true",
+  )`)
 
 	assert(t,
 		func(mt *mockTestingT) bool {
@@ -142,8 +143,122 @@ func TestAssertContains(t *testing.T) {
 			out := "red orange yellow"
 			return Contains(mt, out, "blue")
 		},
-		`out: got "red orange yellow", which doesn't contain "blue"`,
+		`out ("red orange yellow") does not contain: "blue"`,
 	)
+
+	assert(t, func(mt *mockTestingT) bool {
+		out := []string{"red", "orange", "yellow"}
+		return Contains(mt, out, "yellow")
+	}, ``)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			out := []string{"red", "orange", "yellow"}
+			return Contains(mt, out, "blue")
+		},
+		`out does not contain: interface{}(
+- 	string("blue"),
+  )`,
+	)
+
+	assert(t, func(mt *mockTestingT) bool {
+		type x struct {
+			A int
+			B bool
+		}
+		out := []x{
+			{
+				A: 1,
+				B: true,
+			},
+			{
+				A: 2,
+				B: true,
+			},
+		}
+		return Contains(mt, out, x{A: 1, B: true})
+	}, ``)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			type x struct {
+				A int
+				B bool
+			}
+			out := []x{
+				{
+					A: 1,
+					B: true,
+				},
+				{
+					A: 2,
+					B: true,
+				},
+			}
+			want := x{A: 1, B: false}
+			return Contains(mt, out, want)
+		},
+		`out does not contain: interface{}(
+- 	assert.x{A: 1},
+  )
+`,
+	)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			type x struct {
+				A int
+				B bool
+			}
+			out := []x{
+				{
+					A: 1,
+					B: true,
+				},
+				{
+					A: 2,
+					B: true,
+				},
+			}
+			return Contains(
+				mt,
+				out,
+				x{A: 1, B: false},
+				cmpopts.IgnoreFields(x{}, "B"),
+			)
+		},
+		"",
+	)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			out := map[string]string{}
+			return Contains(
+				mt,
+				out,
+				1,
+			)
+		},
+		`out has unsupported type for Contains: "map"`,
+	)
+}
+
+func TestAssertContainsAllOf(t *testing.T) {
+	assert(t, func(mt *mockTestingT) bool {
+		out := []string{"red", "orange", "yellow"}
+		want := []string{"yellow"}
+		return SliceContainsAllOf(mt, out, want)
+	}, ``)
+
+	assert(t,
+		func(mt *mockTestingT) bool {
+			out := []string{"red", "orange", "yellow"}
+			want := []string{"blue", "red", "purple"}
+			return SliceContainsAllOf(mt, out, want)
+		},
+		`out does not contain: interface{}(
+- 	[]interface{}{string("blue"), string("purple")},
+  )`)
 }
 
 func TestAssertTrue(t *testing.T) {
@@ -157,10 +272,10 @@ func TestAssertTrue(t *testing.T) {
 			enabled := false
 			return True(mt, enabled)
 		},
-		`enabled (-got +want): {bool}:
-			-: false
-			+: true
-		`,
+		`enabled (-got +want): bool(
+- 	false,
++ 	true,
+  )`,
 	)
 }
 
@@ -175,10 +290,10 @@ func TestAssertFalse(t *testing.T) {
 			enabled := true
 			return False(mt, enabled)
 		},
-		`enabled (-got +want): {bool}:
-			-: true
-			+: false
-		`,
+		`enabled (-got +want): bool(
+- 	true,
++ 	false,
+  )`,
 	)
 }
 
@@ -229,10 +344,9 @@ func TestAssertNil(t *testing.T) {
 				thing := &Thing{}
 				return Nil(mt, thing)
 			},
-			`thing (-got +want): :
-			-: &assert.Thing{}
-			+: <non-existent>
-		`,
+			`thing (-got +want): interface{}(
+- 	&assert.Thing{},
+  )`,
 		)
 
 		assert(t,
@@ -249,11 +363,9 @@ func TestAssertNil(t *testing.T) {
 				str := "foo"
 				return Nil(mt, str)
 			},
-			`str (-got +want): :
-			-: "foo"
-			+: <non-existent>
-		`,
-		)
+			`str (-got +want): interface{}(
+- 	string("foo"),
+  )`)
 	})
 }
 
