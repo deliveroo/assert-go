@@ -182,13 +182,7 @@ func ContainsAllOf(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 			t.Error("want must be slice")
 			return false
 		}
-		missing = sliceContainsAllOf(
-			t,
-			castInterfaceToSlice(got),
-			castInterfaceToSlice(want),
-			[]interface{}{},
-			opts...,
-		)
+		missing = sliceContainsAllOf(castInterfaceToSlice(want), castInterfaceToSlice(got), opts...)
 	default:
 		msg := fmt.Sprintf("has unsupported type for ContainsAllOf: %q", reflect.TypeOf(got).Kind())
 		t.Error(formatError(getArg(1)(), msg))
@@ -371,19 +365,19 @@ func sliceContains(t testingT, got []interface{}, want interface{}, expr string,
 	return false
 }
 
-func sliceContainsAllOf(t testingT, got, want, missing []interface{}, opts ...cmp.Option) []interface{} {
-	if len(want) == 0 {
-		return missing
-	}
-
-	for i := 0; i < len(got); i++ {
-		if eq := cmp.Equal(got[i], want[0], opts...); eq {
-			return sliceContainsAllOf(t, append(got[:i], got[i+1:]...), want[1:], missing, opts...)
+func sliceContainsAllOf(want []interface{}, got []interface{}, opts ...cmp.Option) []interface{} {
+	var missing []interface{}
+outerLoop:
+	for _, w := range want {
+		for i, g := range got {
+			if eq := cmp.Equal(g, w, opts...); eq {
+				got = append(got[:i], got[i+1:]...)
+				continue outerLoop
+			}
 		}
+		missing = append(missing, w)
 	}
-
-	missing = append(missing, want[0])
-	return sliceContainsAllOf(t, got, want[1:], missing, opts...)
+	return missing
 }
 
 // getArg finds the source code for the given function argument. For example, if

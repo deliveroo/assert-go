@@ -3,10 +3,11 @@ package assert
 import (
 	"errors"
 	"fmt"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func testGetArg(interface{}) string { return getArg(0)() }
@@ -221,6 +222,14 @@ func TestAssertContainsAllOf(t *testing.T) {
 				want := []string{"yellow"}
 				return ContainsAllOf(mt, out, want)
 			}, ``)
+		})
+
+		t.Run("when input has duplicates", func(t *testing.T) {
+			assert(t, func(mt *mockTestingT) bool {
+				out := []string{"red", "orange", "yellow"}
+				want := []string{"yellow", "yellow"}
+				return ContainsAllOf(mt, out, want)
+			}, `out does not contain:`)
 		})
 
 		t.Run("when does not contain all of input", func(t *testing.T) {
