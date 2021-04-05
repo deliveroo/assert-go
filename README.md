@@ -30,14 +30,15 @@ options.
 func Test(t *testing.T) {
     message := "foo"
     assert.Equal(t, message, "bar")
-    // message (-got +want): {string}:
-    //          -: "foo"
-    //          +: "bar"
-
+    // message (-got +want):  string(
+    // - 	"foo",
+    // + 	"bar",
+    //   )
     p := Person{Name: "Alice"}
     assert.Equal(t, p, Person{Name: "Bob"})
-    // p (-got +want): {domain_test.Person}.Name:
-    //          -: "Alice"
-    //          +: "Bob"
+    // p (-got +want): domain_test.Person{
+    // - 	Name: "Alice",
+    // + 	Name: "Bob",
+    //  }
 }
 ```
