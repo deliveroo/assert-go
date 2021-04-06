@@ -214,13 +214,13 @@ func TestAssertContains(t *testing.T) {
 	})
 }
 
-func TestAssertContainsAllOf(t *testing.T) {
+func TestAssertContainsAll(t *testing.T) {
 	t.Run("when input is slice of strings", func(t *testing.T) {
 		t.Run("when contains all of input", func(t *testing.T) {
 			assert(t, func(mt *mockTestingT) bool {
 				out := []string{"red", "orange", "yellow"}
 				want := []string{"yellow"}
-				return ContainsAllOf(mt, out, want)
+				return ContainsAll(mt, out, want)
 			}, ``)
 		})
 
@@ -228,7 +228,7 @@ func TestAssertContainsAllOf(t *testing.T) {
 			assert(t, func(mt *mockTestingT) bool {
 				out := []string{"red", "orange", "yellow"}
 				want := []string{"yellow", "yellow"}
-				return ContainsAllOf(mt, out, want)
+				return ContainsAll(mt, out, want)
 			}, `out does not contain:`)
 		})
 
@@ -237,7 +237,7 @@ func TestAssertContainsAllOf(t *testing.T) {
 				func(mt *mockTestingT) bool {
 					out := []string{"red", "orange", "yellow"}
 					want := []string{"blue", "red", "purple"}
-					return ContainsAllOf(mt, out, want)
+					return ContainsAll(mt, out, want)
 				}, `out does not contain:`)
 		})
 
@@ -245,7 +245,7 @@ func TestAssertContainsAllOf(t *testing.T) {
 			assert(t, func(mt *mockTestingT) bool {
 				out := []string{"red", "orange", "yellow"}
 				want := []string{"red", "orange", "yellow", "blue"}
-				return ContainsAllOf(mt, out, want)
+				return ContainsAll(mt, out, want)
 			}, `out does not contain:`)
 		})
 
@@ -254,7 +254,7 @@ func TestAssertContainsAllOf(t *testing.T) {
 				func(mt *mockTestingT) bool {
 					out := []string{"red", "orange", "yellow"}
 					want := []string{"blue", "purple"}
-					return ContainsAllOf(mt, out, want)
+					return ContainsAll(mt, out, want)
 				}, `out does not contain:`)
 		})
 	})
@@ -275,7 +275,7 @@ func TestAssertContainsAllOf(t *testing.T) {
 					want := []x{
 						{A: 1, B: true},
 					}
-					return ContainsAllOf(mt, out, want)
+					return ContainsAll(mt, out, want)
 				},
 				``)
 		})
@@ -290,7 +290,7 @@ func TestAssertContainsAllOf(t *testing.T) {
 					want := []x{
 						{A: 1, B: false},
 					}
-					return ContainsAllOf(mt, out, want, cmpopts.IgnoreFields(x{}, "B"))
+					return ContainsAll(mt, out, want, cmpopts.IgnoreFields(x{}, "B"))
 				},
 				``)
 		})
@@ -306,7 +306,7 @@ func TestAssertContainsAllOf(t *testing.T) {
 						{A: 1, B: true},
 						{A: 3, B: true},
 					}
-					return ContainsAllOf(mt, out, want)
+					return ContainsAll(mt, out, want)
 				},
 				`out does not contain:`)
 		})
@@ -321,7 +321,7 @@ func TestAssertContainsAllOf(t *testing.T) {
 					want := []x{
 						{A: 3, B: true},
 					}
-					return ContainsAllOf(mt, out, want)
+					return ContainsAll(mt, out, want)
 				},
 				`out does not contain:`)
 		})
@@ -332,7 +332,7 @@ func TestAssertContainsAllOf(t *testing.T) {
 			func(mt *mockTestingT) bool {
 				out := []int{1, 2, 3}
 				want := 3
-				return ContainsAllOf(mt, out, want)
+				return ContainsAll(mt, out, want)
 			},
 			`want must be slice`)
 	})
@@ -341,9 +341,9 @@ func TestAssertContainsAllOf(t *testing.T) {
 		assert(t,
 			func(mt *mockTestingT) bool {
 				out := -1
-				return ContainsAllOf(mt, out, 3)
+				return ContainsAll(mt, out, 3)
 			},
-			`out has unsupported type for ContainsAllOf: "int"`)
+			`out has unsupported type for ContainsAll: "int"`)
 	})
 }
 

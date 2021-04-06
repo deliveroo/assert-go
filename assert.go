@@ -167,9 +167,9 @@ func Contains(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	}
 }
 
-// ContainsContainsAllOf asserts that got contains all items of want.
+// ContainsAll asserts that got contains all items of want.
 // The got and want parameters must be slices.
-func ContainsAllOf(t testingT, got, want interface{}, opts ...cmp.Option) bool {
+func ContainsAll(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	t.Helper()
 
 	gotKind := reflect.TypeOf(got).Kind()
@@ -182,9 +182,9 @@ func ContainsAllOf(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 			t.Error("want must be slice")
 			return false
 		}
-		missing = sliceContainsAllOf(castInterfaceToSlice(want), castInterfaceToSlice(got), opts...)
+		missing = sliceContainsAll(castInterfaceToSlice(want), castInterfaceToSlice(got), opts...)
 	default:
-		msg := fmt.Sprintf("has unsupported type for ContainsAllOf: %q", reflect.TypeOf(got).Kind())
+		msg := fmt.Sprintf("has unsupported type for ContainsAll: %q", reflect.TypeOf(got).Kind())
 		t.Error(formatError(getArg(1)(), msg))
 		return false
 	}
@@ -365,7 +365,7 @@ func sliceContains(t testingT, got []interface{}, want interface{}, expr string,
 	return false
 }
 
-func sliceContainsAllOf(want []interface{}, got []interface{}, opts ...cmp.Option) []interface{} {
+func sliceContainsAll(want []interface{}, got []interface{}, opts ...cmp.Option) []interface{} {
 	var missing []interface{}
 outerLoop:
 	for _, w := range want {
