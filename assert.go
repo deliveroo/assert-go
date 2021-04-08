@@ -90,19 +90,13 @@ func NotEqual(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 func ErrorContains(t testingT, got error, want string) bool {
 	t.Helper()
 	if got == nil {
-		msg := "got <nil>, want not nil"
-		if expr := getArg(1)(); expr != "" {
-			msg = expr + ": " + msg
-		}
-		t.Error(msg)
+		msg := "was not nil"
+		t.Error(formatError(getArg(1)(), msg))
 		return false
 	}
 	if !strings.Contains(got.Error(), want) {
-		msg := fmt.Sprintf("got %q, which does not contain %q", got.Error(), want)
-		if expr := getArg(1)(); expr != "" {
-			msg = expr + ": " + msg
-		}
-		t.Error(msg)
+		msg := fmt.Sprintf("(%q) does not contain %q", got.Error(), want)
+		t.Error(formatError(getArg(1)(), msg))
 		return false
 	}
 	return true
@@ -146,16 +140,61 @@ func JSONLookup(t testingT, subject interface{}, path string) interface{} {
 }
 
 // Contains asserts that got contains want.
-func Contains(t testingT, got, want string) bool {
+// The got parameter can be either a string or slice.
+func Contains(t testingT, got, want interface{}, opts ...cmp.Option) bool {
 	t.Helper()
-	if !strings.Contains(got, want) {
-		msg := fmt.Sprintf("got %q, which doesn't contain %q", got, want)
-		if expr := getArg(1)(); expr != "" {
-			msg = expr + ": " + msg
+
+	switch reflect.TypeOf(got).Kind() {
+	case reflect.String:
+		got2 := got.(string)
+		if reflect.TypeOf(want).Kind() != reflect.String {
+			t.Error("got and want must be the same type")
+			return false
 		}
-		t.Error(msg)
+		want2 := want.(string)
+		if !strings.Contains(got2, want2) {
+			msg := fmt.Sprintf("(%q) does not contain: %q", got2, want2)
+			t.Error(formatError(getArg(1)(), msg))
+			return false
+		}
+		return true
+	case reflect.Slice:
+		return sliceContains(t, castInterfaceToSlice(got), want, getArg(1)(), opts...)
+	default:
+		msg := fmt.Sprintf("has unsupported type for Contains: %q", reflect.TypeOf(got).Kind())
+		t.Error(formatError(getArg(1)(), msg))
 		return false
 	}
+}
+
+// ContainsAll asserts that got contains all items of want.
+// The got and want parameters must be slices.
+func ContainsAll(t testingT, got, want interface{}, opts ...cmp.Option) bool {
+	t.Helper()
+
+	gotKind := reflect.TypeOf(got).Kind()
+
+	var missing []interface{}
+	switch gotKind {
+	case reflect.Slice:
+		wantKind := reflect.TypeOf(want).Kind()
+		if wantKind != reflect.Slice {
+			t.Error("want must be slice")
+			return false
+		}
+		missing = sliceContainsAll(castInterfaceToSlice(want), castInterfaceToSlice(got), opts...)
+	default:
+		msg := fmt.Sprintf("has unsupported type for ContainsAll: %q", reflect.TypeOf(got).Kind())
+		t.Error(formatError(getArg(1)(), msg))
+		return false
+	}
+
+	if len(missing) > 0 {
+		diff := cmp.Diff(missing, nil, opts...)
+		t.Error(formatDiff(getArg(1)(), "does not contain: ", diff))
+		return false
+	}
+
 	return true
 }
 
@@ -180,11 +219,8 @@ func Match(t testingT, got, want string) bool {
 		return false
 	}
 	if !match {
-		msg := fmt.Sprintf("got %q, which doesn't match %q", got, want)
-		if expr := getArg(1)(); expr != "" {
-			msg = expr + ": " + msg
-		}
-		t.Error(msg)
+		msg := fmt.Sprintf("(%q) doesn't match %q", got, want)
+		t.Error(formatError(getArg(1)(), msg))
 		return false
 	}
 	return true
@@ -211,11 +247,8 @@ func Nil(t testingT, got interface{}) bool {
 func NotNil(t testingT, got interface{}) bool {
 	t.Helper()
 	if isNil(got) {
-		msg := "got <nil>, want not nil"
-		if expr := getArg(1)(); expr != "" {
-			msg = expr + ": " + msg
-		}
-		t.Error(msg)
+		msg := "was not nil"
+		t.Error(formatError(getArg(1)(), msg))
 		return false
 	}
 	return true
@@ -225,11 +258,8 @@ func NotNil(t testingT, got interface{}) bool {
 func Empty(t testingT, got interface{}) bool {
 	t.Helper()
 	if !isEmpty(got) {
-		msg := fmt.Sprintf("got %s, want empty", fmtVal(got))
-		if expr := getArg(1)(); expr != "" {
-			msg = expr + ": " + msg
-		}
-		t.Error(msg)
+		msg := fmt.Sprintf("(%s) was not empty", fmtVal(got))
+		t.Error(formatError(getArg(1)(), msg))
 		return false
 	}
 	return true
@@ -239,11 +269,7 @@ func Empty(t testingT, got interface{}) bool {
 func NotEmpty(t testingT, got interface{}) bool {
 	t.Helper()
 	if isEmpty(got) {
-		msg := fmt.Sprintf("got %s, want not empty", fmtVal(got))
-		if expr := getArg(1)(); expr != "" {
-			msg = expr + ": " + msg
-		}
-		t.Error(msg)
+		t.Error(formatError(getArg(1)(), "was empty"))
 		return false
 	}
 	return true
@@ -295,12 +321,7 @@ func assertEqual(t testingT, expr func() string, got, want interface{}, opts []c
 	t.Helper()
 	opts = append(opts, defaultOpts...)
 	if diff := cmp.Diff(got, want, opts...); diff != "" {
-		expr := expr()
-		msg := "(-got +want): " + diff
-		if expr != "" {
-			msg = expr + " " + msg
-		}
-		t.Error(msg)
+		t.Error(formatDiff(expr(), "(-got +want): ", diff))
 		return false
 	}
 	return true
@@ -315,15 +336,48 @@ func assertNotEqual(t testingT, expr func() string, got, notWant interface{}, op
 	t.Helper()
 	opts = append(opts, defaultOpts...)
 	if diff := cmp.Diff(got, notWant, opts...); diff == "" {
-		expr := expr()
 		msg := fmt.Sprintf("should not equal %#v", notWant)
-		if expr != "" {
-			msg = expr + ": " + msg
-		}
-		t.Error(msg)
+		t.Error(formatError(expr(), msg))
 		return false
 	}
 	return true
+}
+
+func castInterfaceToSlice(inter interface{}) []interface{} {
+	v := reflect.ValueOf(inter)
+	ii := make([]interface{}, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		ii[i] = v.Index(i).Interface()
+	}
+	return ii
+}
+
+func sliceContains(t testingT, got []interface{}, want interface{}, expr string, opts ...cmp.Option) bool {
+	for i := 0; i < len(got); i++ {
+		opts = append(opts, defaultOpts...)
+		if eq := cmp.Equal(got[i], want, opts...); eq {
+			return true
+		}
+	}
+
+	diff := cmp.Diff(want, nil, opts...)
+	t.Error(formatDiff(expr, "does not contain: ", diff))
+	return false
+}
+
+func sliceContainsAll(want []interface{}, got []interface{}, opts ...cmp.Option) []interface{} {
+	var missing []interface{}
+outerLoop:
+	for _, w := range want {
+		for i, g := range got {
+			if eq := cmp.Equal(g, w, opts...); eq {
+				got = append(got[:i], got[i+1:]...)
+				continue outerLoop
+			}
+		}
+		missing = append(missing, w)
+	}
+	return missing
 }
 
 // getArg finds the source code for the given function argument. For example, if
@@ -416,4 +470,19 @@ func toJSON(v interface{}) interface{} {
 		panic(err)
 	}
 	return r
+}
+
+func formatDiff(expr, prefix, diff string) string {
+	msg := prefix + strings.TrimSpace(diff)
+	if expr != "" {
+		msg = expr + " " + msg
+	}
+	return msg
+}
+
+func formatError(expr, msg string) string {
+	if expr != "" {
+		msg = expr + " " + msg
+	}
+	return msg
 }
