@@ -546,7 +546,7 @@ func assert(t *testing.T, fn func(mt *mockTestingT) bool, want string) {
 		t.Errorf("error:\ngot:  %s\nwant prefix: %s", mt.err, want)
 	}
 	if ret != (want == "") {
-		t.Errorf("returned %v, want %v", ret, (want == ""))
+		t.Errorf("returned %v, want %v", ret, want == "")
 	}
 }
 
