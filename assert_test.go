@@ -3,14 +3,17 @@ package assert
 import (
 	"errors"
 	"fmt"
+	"path"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func testGetArg(interface{}) string { return getArg(0)() }
+func testGetArg(_ interface{}) string { return getArg(0)() }
 
 func TestGetArgName(t *testing.T) {
 	t.Run("variable", func(t *testing.T) {
@@ -349,13 +352,13 @@ func TestAssertContainsAll(t *testing.T) {
 
 func TestAssertTrue(t *testing.T) {
 	assert(t, func(mt *mockTestingT) bool {
-		enabled := true
+		const enabled = true
 		return True(mt, enabled)
 	}, ``)
 
 	assert(t,
 		func(mt *mockTestingT) bool {
-			enabled := false
+			const enabled = false
 			return True(mt, enabled)
 		},
 		`enabled (-got +want):`,
@@ -364,13 +367,13 @@ func TestAssertTrue(t *testing.T) {
 
 func TestAssertFalse(t *testing.T) {
 	assert(t, func(mt *mockTestingT) bool {
-		enabled := false
+		const enabled = false
 		return False(mt, enabled)
 	}, ``)
 
 	assert(t,
 		func(mt *mockTestingT) bool {
-			enabled := true
+			const enabled = true
 			return False(mt, enabled)
 		},
 		`enabled (-got +want):`,
@@ -543,7 +546,7 @@ func assert(t *testing.T, fn func(mt *mockTestingT) bool, want string) {
 		t.Errorf("error:\ngot:  %s\nwant prefix: %s", mt.err, want)
 	}
 	if ret != (want == "") {
-		t.Errorf("returned %v, want %v", ret, (want == ""))
+		t.Errorf("returned %v, want %v", ret, want == "")
 	}
 }
 
@@ -561,3 +564,57 @@ func assertEQ(t *testing.T, got, want interface{}) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
+
+func TestRegisterOptions(t *testing.T) {
+	compareTrue := cmp.Comparer(func(int, int) bool { return true })
+	compareFalse := cmp.Comparer(func(int, int) bool { return false })
+
+	tests := []struct {
+		fn            func(t testingT, got, want interface{}, opts ...cmp.Option) bool
+		fnGot, fnWant interface{}
+		regOpt        cmp.Option
+	}{
+		{
+			fn:     Equal,
+			fnGot:  1,
+			fnWant: 2,
+			regOpt: compareTrue,
+		},
+		{
+			fn:     NotEqual,
+			fnGot:  1,
+			fnWant: 1,
+			regOpt: compareFalse,
+		},
+		{
+			fn:     Contains,
+			fnGot:  []int{1},
+			fnWant: 2,
+			regOpt: compareTrue,
+		},
+		{
+			fn:     ContainsAll,
+			fnGot:  []int{1},
+			fnWant: []int{2},
+			regOpt: compareTrue,
+		},
+	}
+	for _, tt := range tests {
+		funcPath := runtime.FuncForPC(reflect.ValueOf(tt.fn).Pointer()).Name()
+		funcName := strings.Split(path.Base(funcPath), ".")[1]
+
+		t.Run(funcName, func(t *testing.T) {
+			defer resetDefaultOpts()
+			RegisterOptions(tt.regOpt)
+			mt := &mockTestingT{}
+			if !tt.fn(mt, tt.fnGot, tt.fnWant) {
+				t.Errorf("%s did not use RegisterOptions", funcName)
+			}
+		})
+	}
+}
+
+var resetDefaultOpts = func() func() {
+	defaultDefaultOpts := defaultOpts
+	return func() { defaultOpts = defaultDefaultOpts }
+}()
