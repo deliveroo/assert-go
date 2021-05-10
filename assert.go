@@ -366,6 +366,7 @@ func sliceContains(t testingT, got []interface{}, want interface{}, expr string,
 }
 
 func sliceContainsAll(want []interface{}, got []interface{}, opts ...cmp.Option) []interface{} {
+	opts = append(opts, defaultOpts...)
 	var missing []interface{}
 outerLoop:
 	for _, w := range want {
