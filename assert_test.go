@@ -352,13 +352,13 @@ func TestAssertContainsAll(t *testing.T) {
 
 func TestAssertTrue(t *testing.T) {
 	assert(t, func(mt *mockTestingT) bool {
-		enabled := true
+		const enabled = true
 		return True(mt, enabled)
 	}, ``)
 
 	assert(t,
 		func(mt *mockTestingT) bool {
-			enabled := false
+			const enabled = false
 			return True(mt, enabled)
 		},
 		`enabled (-got +want):`,
@@ -367,13 +367,13 @@ func TestAssertTrue(t *testing.T) {
 
 func TestAssertFalse(t *testing.T) {
 	assert(t, func(mt *mockTestingT) bool {
-		enabled := false
+		const enabled = false
 		return False(mt, enabled)
 	}, ``)
 
 	assert(t,
 		func(mt *mockTestingT) bool {
-			enabled := true
+			const enabled = true
 			return False(mt, enabled)
 		},
 		`enabled (-got +want):`,
