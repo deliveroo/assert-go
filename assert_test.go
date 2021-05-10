@@ -3,10 +3,13 @@ package assert
 import (
 	"errors"
 	"fmt"
+	"path"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
@@ -561,3 +564,57 @@ func assertEQ(t *testing.T, got, want interface{}) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
+
+func TestRegisterOptions(t *testing.T) {
+	compareTrue := cmp.Comparer(func(int, int) bool { return true })
+	compareFalse := cmp.Comparer(func(int, int) bool { return false })
+
+	tests := []struct {
+		fn            func(t testingT, got, want interface{}, opts ...cmp.Option) bool
+		fnGot, fnWant interface{}
+		regOpt        cmp.Option
+	}{
+		{
+			fn:     Equal,
+			fnGot:  1,
+			fnWant: 2,
+			regOpt: compareTrue,
+		},
+		{
+			fn:     NotEqual,
+			fnGot:  1,
+			fnWant: 1,
+			regOpt: compareFalse,
+		},
+		{
+			fn:     Contains,
+			fnGot:  []int{1},
+			fnWant: 2,
+			regOpt: compareTrue,
+		},
+		{
+			fn:     ContainsAll,
+			fnGot:  []int{1},
+			fnWant: []int{2},
+			regOpt: compareTrue,
+		},
+	}
+	for _, tt := range tests {
+		funcPath := runtime.FuncForPC(reflect.ValueOf(tt.fn).Pointer()).Name()
+		funcName := strings.Split(path.Base(funcPath), ".")[1]
+
+		t.Run(funcName, func(t *testing.T) {
+			defer resetDefaultOpts()
+			RegisterOptions(tt.regOpt)
+			mt := &mockTestingT{}
+			if !tt.fn(mt, tt.fnGot, tt.fnWant) {
+				t.Errorf("%s did not use RegisterOptions", funcName)
+			}
+		})
+	}
+}
+
+var resetDefaultOpts = func() func() {
+	defaultDefaultOpts := defaultOpts
+	return func() { defaultOpts = defaultDefaultOpts }
+}()
