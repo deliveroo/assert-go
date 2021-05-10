@@ -13,7 +13,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func testGetArg(interface{}) string { return getArg(0)() }
+func testGetArg(_ interface{}) string { return getArg(0)() }
 
 func TestGetArgName(t *testing.T) {
 	t.Run("variable", func(t *testing.T) {
