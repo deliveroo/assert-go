@@ -353,8 +353,8 @@ func castInterfaceToSlice(inter interface{}) []interface{} {
 }
 
 func sliceContains(t testingT, got []interface{}, want interface{}, expr string, opts ...cmp.Option) bool {
+	opts = append(opts, defaultOpts...)
 	for i := 0; i < len(got); i++ {
-		opts = append(opts, defaultOpts...)
 		if eq := cmp.Equal(got[i], want, opts...); eq {
 			return true
 		}
